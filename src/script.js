@@ -5,15 +5,26 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 //import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { gsap } from 'gsap'
+import portalVertexShader from "./shaders/portal/vertex.glsl"
+import portalFragmentShader from "./shaders/portal/fragment.glsl"
+
+//import seaWaves_vertexShader from "./shaders/sea_waves/vertex.glsl"
+import vertexShader from "./shaders/ocean/vertex.glsl"
+import fragmentShader from "./shaders/ocean/fragment.glsl"
 
 /**
  * Base
  */
 // Debug
+
+// GUI  -------------------------------------------------------
 /*
-const gui = new dat.GUI({
-    width: 400
-})
+const gui = new dat.GUI({ width: 340 })
+const debugObject = {}
+//debugObject.depthColor = "#186691"
+debugObject.depthColor = "#318588"
+//debugObject.surfaceColor = "#9bd8ff"
+debugObject.surfaceColor = "#cbdddd"
 */
 
 // Canvas
@@ -29,33 +40,6 @@ scene.background = new THREE.Color( 0xb9bfcd );
  * Overlay
  */
 /*
- const overlayGeometry = new THREE.PlaneGeometry(2, 2, 1, 1)
- const overlayMaterial = new THREE.ShaderMaterial({
-     // wireframe: true,
-     transparent: true,
-     uniforms:
-     {
-         uAlpha: { value: 1 }
-     },
-     vertexShader: `
-         void main()
-         {
-             gl_Position = vec4(position, 1.0);
-         }
-     `,
-     fragmentShader: `
-         uniform float uAlpha;
- 
-         void main()
-         {
-             gl_FragColor = vec4(0.0, 0.0, 0.0, uAlpha);
-         }
-     `
- })
- const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial)
- //overlay.name = "_overlay"
- scene.add(overlay)
-*/
 
 
 /**
@@ -138,13 +122,6 @@ floor_baked_texture.encoding = THREE.sRGBEncoding
 /**
  * Object
  */
-/*
-const cube = new THREE.Mesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshBasicMaterial()
-)
-scene.add(cube)
-*/
 
 
 // BAKED MATERIAL
@@ -176,6 +153,38 @@ scene.add(cube)
 */
 
 
+const portalLightMaterial = new THREE.ShaderMaterial({
+    uniforms:{
+        uTime: {value:0},
+        uColorStart: { value: new THREE.Color(0xffffff) },
+        uColorEnd: { value: new THREE.Color(0x889eeb) }
+    },
+    vertexShader: portalVertexShader,
+    fragmentShader: portalFragmentShader
+})
+
+/*
+const seaWaves_ShaderMaterial = new THREE.ShaderMaterial({
+    uniforms:{
+        uTime: {value:0},
+        uBigWavesElevation: {value:0.1},
+        uBigWavesFrequency: {value: new THREE.Vector2(2, 1.0)},
+        uBigWavesSpeed : {value: new THREE.Vector2(0.75, 0.75)},
+
+        uSmallWavesElevation: {value: 0.15},
+
+        uDepthColor: {value: new THREE.Color("#318588")},
+        uSurfaceColor: {value: new THREE.Color("#cbdddd")},
+        uColorOffset : {value: 0.02},
+        uColorMultiplier : {value: 3}
+    },
+
+    transparent: true,
+    vertexShader: seaWaves_vertexShader,
+    fragmentShader: seaWaves_fragmentShader
+})
+*/
+
 
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.1)
@@ -186,7 +195,26 @@ var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.3);
 directionalLight.position.set( -4, 2, -5 );
 scene.add(directionalLight);
 
+const seaWaves_ShaderMaterial = new THREE.ShaderMaterial({
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader,
+    side: THREE.DoubleSide,
+    transparent: true,
+    //wireframe:true,
+    uniforms:{
+        uTime: {value: 0},
+        uHeight: {value: 0},
+        uDepthColor: {value: new THREE.Color("#1a6fb6")},
+        uSurfaceColor: {value: new THREE.Color("#cbdddd")},
+        uColorOffset : {value: -3.17},
+        uColorMultiplier : {value: 0.236}
+    }
+})
 
+/*
+gui.add(seaWaves_ShaderMaterial.uniforms.uColorOffset, "value").min(-5).max(5).step(0.001).name("uColorOffset")
+gui.add(seaWaves_ShaderMaterial.uniforms.uColorMultiplier, "value").min(-5).max(5).step(0.001).name("uColorMultiplier")
+*/
 
 /* HELPERS */
 //const helper = new THREE.DirectionalLightHelper( directionalLight, 5 );
@@ -213,31 +241,21 @@ scene.add( pointLight_helper );
 
 // MODEL
 
+
 gltfLoader.load(
     //'portal.glb',
     //'Episode 2_ultralow_poly.glb',
     'GeometryTerrain.glb',
     (gltf) =>{
         console.log(gltf.scene)
-
         gltf.scene.traverse((child) =>{
             //child.material = bakedMaterial
             child.material = terrain_material
         }) 
-
-        //const portalLightMesh = gltf.scene.children.find(child => child.name === "portalLight")
-        //const poleLightAMesh = gltf.scene.children.find(child => child.name === "poleLightA")
-        //const poleLightBMesh = gltf.scene.children.find(child => child.name === "poleLightB")
-        //console.log(poleLightAMesh)
-        //
-        //poleLightAMesh.material = poleLightMaterial 
-        //poleLightBMesh.material = poleLightMaterial 
-        //portalLightMesh.material = portalLightMaterial
-        
-
         scene.add(gltf.scene)
     }
 )
+
 gltfLoader.load(
     'GeometryTrees.glb',
     (gltf) =>{
@@ -258,6 +276,7 @@ gltfLoader.load(
         scene.add(gltf.scene)
     }
 )
+
 gltfLoader.load(
     'GeometryFloor.glb',
     (gltf) =>{
@@ -270,15 +289,35 @@ gltfLoader.load(
 )
 
 gltfLoader.load(
-    'GeometryRiver.glb',
+    'GeometryCube20.glb',
     (gltf) =>{
+        //console.log("gltf: ", gltf),
         gltf.scene.traverse((child) =>{
-            //child.material = bakedMaterial
-            child.material = temp_river_material
+            child.material = seaWaves_ShaderMaterial
+            //child.material = temp_river_material
         }) 
+        console.log("", gltf.scene.position)
+        gltf.scene.position.y = -0.6
         scene.add(gltf.scene)
     }
 )
+
+/*
+// Debug GUI
+gui.add(seaWaves_ShaderMaterial.uniforms.uBigWavesElevation, "value").min(0).max(1).step(0.001).name("uBigWavesElevation")
+gui.add(seaWaves_ShaderMaterial.uniforms.uBigWavesFrequency.value, "x").min(0).max(10).step(0.001).name("uBigWavesFrequency")
+gui.add(seaWaves_ShaderMaterial.uniforms.uBigWavesFrequency.value, "y").min(0).max(10).step(0.001).name("uBigWavesFrequency")
+gui.add(seaWaves_ShaderMaterial.uniforms.uBigWavesSpeed.value, "x").min(0).max(2).step(0.001).name("uBigWavesSpeedX")
+gui.add(seaWaves_ShaderMaterial.uniforms.uBigWavesSpeed.value, "y").min(0).max(2).step(0.001).name("uBigWavesSpeedY")
+gui.addColor(debugObject, "depthColor").name("depthColor").onChange(() =>{
+    seaWaves_ShaderMaterial.uniforms.uDepthColor.value.set(debugObject.depthColor)
+})
+gui.addColor(debugObject, "surfaceColor").name("surfaceColor").onChange(() =>{
+    seaWaves_ShaderMaterial.uniforms.uSurfaceColor.value.set(debugObject.surfaceColor)
+})
+gui.add(seaWaves_ShaderMaterial.uniforms.uColorOffset, "value").min(0).max(1).step(0.001).name("uColorOffset")
+gui.add(seaWaves_ShaderMaterial.uniforms.uColorMultiplier, "value").min(0).max(10).step(0.001).name("uColorMultiplier")
+*/
 
 /**
  * Sizes
@@ -338,6 +377,9 @@ const clock = new THREE.Clock()
 const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
+
+    //portalLightMaterial.uniforms.uTime.value = elapsedTime
+    seaWaves_ShaderMaterial.uniforms.uTime.value = elapsedTime
 
     // Update controls
     controls.update()
